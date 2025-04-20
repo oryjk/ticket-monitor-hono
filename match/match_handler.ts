@@ -1,6 +1,13 @@
 import { Hono } from "hono";
 import { query } from "../db.ts";
 
+interface MemberBinding {
+    id: number;
+    license: string;
+    mac_address: string;
+    created_at: Date;
+}
+
 interface Match {
     id: number;
     home_name: string;
@@ -20,7 +27,7 @@ async function validateMemberKey(key: string): Promise<boolean> {
       WHERE member_key = $1
     `;
 
-    const rows = await query<{count: number}>(sql, [key]);
+    const rows = await query<{ count: number }>(sql, [key]);
     return rows[0]?.count > 0;
 }
 
@@ -106,6 +113,8 @@ match.get("/current/:key", async (c) => {
     }
 });
 
+
+
 // 获取当前比赛
 match.get("/matchList", async (c) => {
     try {
@@ -150,6 +159,75 @@ match.get("/:id", async (c) => {
     } catch (error) {
         console.error("获取比赛详情时出错:", error);
         return c.json({ message: "服务器内部错误" }, 500);
+    }
+});
+
+// 绑定会员信息
+async function bindMember(license: string, macAddress: string): Promise<boolean> {
+    // 首先检查 license 是否存在且状态为空
+    const checkSql = `
+      SELECT id
+      FROM rs_member_info
+      WHERE member_key = $1
+        AND (member_status IS NULL OR member_status = '')
+    `;
+
+    try {
+        const rows = await query(checkSql, [license]);
+        if (rows.length === 0) {
+            console.log("License not found or already bound");
+            return false;
+        }
+        try {
+            // 更新绑定信息和状态
+            const updateSql = `
+                UPDATE rs_member_info
+                SET mac_address = $1,
+                    member_status = 'ACTIVE'
+                WHERE member_key = $2
+                RETURNING id
+            `;
+
+            const rows = await query(updateSql, [macAddress, license]);
+            return true
+
+        } catch (error) {
+
+            throw error;
+        } finally {
+
+        }
+    } catch (error) {
+        console.error("绑定会员信息时出错:", error);
+        return false;
+    }
+}
+
+// 绑定会员
+match.post("/bind_member", async (c) => {
+    try {
+        const body = await c.req.json();
+        const { license, mac_address } = body;
+
+        if (!license || !mac_address) {
+            return c.json({ message: "缺少必要参数" }, 400);
+        }
+
+        const success = await bindMember(license, mac_address);
+
+        if (!success) {
+            return c.json({ message: "绑定失败" }, 500);
+        }
+
+        return c.json({ message: "绑定成功" });
+    } catch (error) {
+        console.error("处理会员绑定请求时出错:", error);
+        return c.json({
+            message: "服务器内部错误",
+            error: Deno.env.get("ENVIRONMENT") === "development"
+                ? (error instanceof Error ? error.message : String(error))
+                : undefined,
+        }, 500);
     }
 });
 
