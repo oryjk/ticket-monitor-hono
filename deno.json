@@ -6,6 +6,8 @@
     "start": "deno run --allow-net main.ts"
   },
   "compilerOptions": {
+    "lib": ["deno.window", "dom", "esnext"],
+    "strict": true,
     "jsx": "precompile",
     "jsxImportSource": "hono/jsx"
   }
