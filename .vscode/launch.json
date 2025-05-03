@@ -15,6 +15,7 @@
       "runtimeArgs": [
         "run",
         "--unstable",
+        "--watch",
         "--inspect-wait",
         "--allow-all"
       ],

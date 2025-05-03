@@ -1,0 +1,3 @@
+curl -X POST http://localhost:8000/order/orderList \
+-H "Content-Type: application/json" \
+-d '{"orderStatus": 4, "userId": 432555, "token": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1aWQiOjQzMjU1NSwib2lkIjoiNTZkYTZlYTExZTM5YTIyMWE2NzYzNTYyOGZlNTc1ZjgiLCJsaWQiOjAsInNpZGUiOiJ3eF9hcGkiLCJhdWQiOiIiLCJleHAiOjE3NDYyODE4NzIsImlhdCI6MTc0NjIwOTg3MiwiaXNzIjoiIiwianRpIjoiY2I3OGQ3ODgyYmI3MTFlMTM0NTM4ZWI3ZGQ0ZWQ4ODYiLCJuYmYiOjE3NDYyMDk4NzIsInN1YiI6IiJ9.npT78zddbPylgeaNSQJSKIMNXINVkP7STtebjSfHFNA"}'
