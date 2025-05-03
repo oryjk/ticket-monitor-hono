@@ -45,16 +45,43 @@ export async function bindUser(
   return (await query<MemberInfo>(sql, [member_key]))[0];
 }
 
+export async function updateUserInfo(
+  memberInfo: MemberInfo,
+): Promise<void> {
+  const sql = `
+    UPDATE rs_member_info
+    SET email_count = $1
+    WHERE id = $2
+  `;
+  await query(sql, [memberInfo.email_count, memberInfo.id]);
+}
+
 export async function getUserInfo(
   member_key: string,
 ): Promise<MemberInfo | null> {
   const sql = `
-      SELECT id, phone, member_key
+      SELECT id, phone, member_key, email, email_count, member_name
       FROM rs_member_info
       WHERE member_key = $1
-    `;
+  `;
 
   const rows = await query<MemberInfo>(sql, [member_key]);
+  if (rows.length != 1) {
+    return null;
+  }
+  return rows[0];
+}
+
+export async function getUserInfoById(
+  id: number,
+): Promise<MemberInfo | null> {
+  const sql = `
+      SELECT id, phone, member_key, email, email_count, member_name
+      FROM rs_member_info
+      WHERE id = $1
+  `;
+
+  const rows = await query<MemberInfo>(sql, [id]);
   if (rows.length != 1) {
     return null;
   }

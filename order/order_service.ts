@@ -1,7 +1,7 @@
-import { getWeChatUserInfo, WeChatInfo } from "../user/user_service.ts";
-import { query } from "../db.ts";
-import { fetchMatchOrderList } from "./order_handler.ts";
-import { sendOrderNotificationEmail } from "../utils/email.ts";
+import {getUserInfoById, getWeChatUserInfo, updateUserInfo, WeChatInfo,} from "../user/user_service.ts";
+import {query} from "../db.ts";
+import {fetchMatchOrderList} from "./order_handler.ts";
+import {sendOrderNotificationEmail} from "../utils/email.ts";
 import {fetchMatchOrderInfo} from "./order_detail_service.ts";
 
 /**
@@ -163,11 +163,18 @@ async function runPeriodicPendingOrderCheck() {
 }
 
 // --- 函数：检查单个用户的待支付订单并发送邮件 ---
-async function checkAndSendPendingOrdersForUser(weChatInfo: WeChatInfo, recipientEmail: string) {
-  console.log(`[Task] Checking pending orders for user (UID: ${weChatInfo.uid}, Member ID: ${weChatInfo.member_id})`);
+async function checkAndSendPendingOrdersForUser(
+  weChatInfo: WeChatInfo,
+  recipientEmail: string,
+) {
+  console.log(
+    `[Task] Checking pending orders for user (UID: ${weChatInfo.uid}, Member ID: ${weChatInfo.member_id})`,
+  );
 
   if (!weChatInfo.uid || !weChatInfo.auth_token || !recipientEmail) {
-    console.error(`[Task] Missing info for user (Member ID: ${weChatInfo.member_id}). Skipping check.`);
+    console.error(
+      `[Task] Missing info for user (Member ID: ${weChatInfo.member_id}). Skipping check.`,
+    );
     return;
   }
 
@@ -176,43 +183,49 @@ async function checkAndSendPendingOrdersForUser(weChatInfo: WeChatInfo, recipien
   try {
     // 1. 查询待支付订单列表 (获取订单ID等基本信息)
     const pendingOrdersList = await fetchMatchOrderList(
-        weChatInfo.uid,
-        authHeader,
-        OrderQueryStatus.PendingPayment,
+      weChatInfo.uid,
+      authHeader,
+      OrderQueryStatus.PendingPayment,
     );
 
     if (pendingOrdersList.length > 0) {
-      console.log(`[Task] User (UID: ${weChatInfo.uid}) found ${pendingOrdersList.length} pending order(s).`);
+      console.log(
+        `[Task] User (UID: ${weChatInfo.uid}) found ${pendingOrdersList.length} pending order(s).`,
+      );
 
       // 2. 为每个待支付订单获取详细信息
-      const detailedOrderPromises = pendingOrdersList.map(order =>
-          fetchMatchOrderInfo(weChatInfo.uid, authHeader, order.id) // 使用 fetchMatchOrderInfo 获取详细信息
+      const detailedOrderPromises = pendingOrdersList.map((order) =>
+        fetchMatchOrderInfo(weChatInfo.uid, authHeader, order.id) // 使用 fetchMatchOrderInfo 获取详细信息
       );
 
       // 使用 Promise.allSettled 等待所有详细信息获取完成
-      const detailedOrderResults = await Promise.allSettled(detailedOrderPromises);
+      const detailedOrderResults = await Promise.allSettled(
+        detailedOrderPromises,
+      );
 
       // 3. 遍历详细信息结果，发送邮件
       for (const result of detailedOrderResults) {
-        if (result.status === 'fulfilled' && result.value !== null) {
+        if (result.status === "fulfilled" && result.value !== null) {
           const detailedOrder = result.value;
 
           // !!! 在实际应用中，需要添加逻辑判断订单是否需要发送通知 (例如，是否已发送过，订单是否确实待支付，支付截止时间是否临近等) !!!
           // 避免重复发送或发送给已经支付的订单
 
-          console.log(`[Task] User (UID: ${weChatInfo.uid}) fetched details for order: ${detailedOrder.order_id}. Constructing email.`);
+          console.log(
+            `[Task] User (UID: ${weChatInfo.uid}) fetched details for order: ${detailedOrder.order_id}. Constructing email.`,
+          );
 
           // 构造账单项列表的 HTML
-          let billsHtml = '<ul>';
+          let billsHtml = "<ul>";
           if (detailedOrder.bill && detailedOrder.bill.length > 0) {
-            detailedOrder.bill.forEach(bill => {
-              billsHtml += `<li><strong>名称:</strong> ${bill.name} (${bill.estateName}), <strong>区域ID:</strong> ${bill.region}, <strong>价格:</strong> ${bill.price}, <strong>持票人:</strong> ${bill.realname}</li>`;
+            detailedOrder.bill.forEach((bill) => {
+              billsHtml +=
+                `<li><strong>名称:</strong> ${bill.name} (${bill.estateName}), <strong>区域ID:</strong> ${bill.region}, <strong>价格:</strong> ${bill.price}, <strong>持票人:</strong> ${bill.realname}</li>`;
             });
           } else {
-            billsHtml += '<li>无详细账单项信息</li>';
+            billsHtml += "<li>无详细账单项信息</li>";
           }
-          billsHtml += '</ul>';
-
+          billsHtml += "</ul>";
 
           const emailSubject = `待支付订单提醒: ${detailedOrder.order_id}`;
           const emailBodyHtml = `
@@ -224,7 +237,11 @@ async function checkAndSendPendingOrdersForUser(weChatInfo: WeChatInfo, recipien
                    <li><strong>订单状态码:</strong> ${detailedOrder.status}</li>
                    <li><strong>创建时间:</strong> ${detailedOrder.create_time}</li>
                    <li><strong>支付截止时间:</strong> ${detailedOrder.order_end_time}</li>
-                   ${detailedOrder.match ? `<li><strong>比赛:</strong> ${detailedOrder.match.title} (${detailedOrder.match.s_date})</li>` : ''}
+                   ${
+            detailedOrder.match
+              ? `<li><strong>比赛:</strong> ${detailedOrder.match.title} (${detailedOrder.match.s_date})</li>`
+              : ""
+          }
                  </ul>
                  <h3>账单明细:</h3>
                  ${billsHtml}
@@ -233,26 +250,61 @@ async function checkAndSendPendingOrdersForUser(weChatInfo: WeChatInfo, recipien
                `;
 
           try {
-            await sendOrderNotificationEmail(recipientEmail, emailSubject, emailBodyHtml);
-            console.log(`[Task] User (UID: ${weChatInfo.uid}) sent notification email for order: ${detailedOrder.order_id} to ${recipientEmail}`);
+            const memberInfo = await getUserInfoById(
+              Number(weChatInfo.member_id),
+            );
+            if (!memberInfo) {
+              console.error(
+                `[Task] User (UID: ${weChatInfo.uid}) failed to fetch member info for member ID: ${weChatInfo.member_id}`,
+              );
+              return;
+            }
+            if (memberInfo.email_count <= 0) {
+              console.log(
+                `[Task] User (UID: ${weChatInfo.uid}) has no email count for member ID: ${weChatInfo.member_id}, count ${memberInfo.email_count}`,
+              );
+              return;
+            }
+
+            await sendOrderNotificationEmail(
+              recipientEmail,
+              emailSubject,
+              emailBodyHtml,
+            );
+            memberInfo.email_count = memberInfo.email_count - 1;
+            console.log(
+              `发送邮件成功，剩余次数减一 ${memberInfo.id}| ${memberInfo.member_name}`,
+            );
+            await updateUserInfo(memberInfo);
+            console.log(
+              `[Task] User (UID: ${weChatInfo.uid}) sent notification email for order: ${detailedOrder.order_id} to ${recipientEmail}`,
+            );
             // !!! 在实际应用中，你可能需要在这里更新订单状态或记录通知时间，避免重复发送 !!!
           } catch (emailError) {
-            console.error(`[Task] User (UID: ${weChatInfo.uid}) failed to send email for order ${detailedOrder.order_id} to ${recipientEmail}: ${emailError}`);
+            console.error(
+              `[Task] User (UID: ${weChatInfo.uid}) failed to send email for order ${detailedOrder.order_id} to ${recipientEmail}: ${emailError}`,
+            );
             // 继续处理下一个订单的邮件发送
           }
-
-        } else if (result.status === 'rejected') {
-          console.error(`[Task] User (UID: ${weChatInfo.uid}) failed to fetch detailed info for one order:`, result.reason);
+        } else if (result.status === "rejected") {
+          console.error(
+            `[Task] User (UID: ${weChatInfo.uid}) failed to fetch detailed info for one order:`,
+            result.reason,
+          );
         } else { // status is 'fulfilled' but value is null (fetchMatchOrderInfo returned null)
-          console.warn(`[Task] User (UID: ${weChatInfo.uid}) fetched detailed info for one order, but data was null.`);
+          console.warn(
+            `[Task] User (UID: ${weChatInfo.uid}) fetched detailed info for one order, but data was null.`,
+          );
         }
       }
-
     } else {
-      console.log(`[Task] User (UID: ${weChatInfo.uid}) has no pending orders.`);
+      console.log(
+        `[Task] User (UID: ${weChatInfo.uid}) has no pending orders.`,
+      );
     }
   } catch (error) {
-    console.error(`[Task] Error during pending order check for user (UID: ${weChatInfo.uid}): ${error}`);
+    console.error(
+      `[Task] Error during pending order check for user (UID: ${weChatInfo.uid}): ${error}`,
+    );
   }
 }
-
