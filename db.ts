@@ -5,12 +5,18 @@ import { load } from "https://deno.land/std@0.177.0/dotenv/mod.ts";
 const envConfig = await load();
 // 从环境变量获取配置，或使用默认值
 const POOL_CONNECTIONS = 20;
-const DB_USER = Deno.env.get("DB_USER") || envConfig["DB_USER"] || "your_username";
+const DB_USER = Deno.env.get("DB_USER") || envConfig["DB_USER"] ||
+  "your_username";
 const DB_HOST = Deno.env.get("DB_HOST") || envConfig["DB_HOST"] || "localhost";
-const DB_NAME = Deno.env.get("DB_NAME") || envConfig["DB_NAME"] || "your_database";
-const DB_PASSWORD = Deno.env.get("DB_PASSWORD") || envConfig["DB_PASSWORD"] || "your_password";
-const DB_PORT = parseInt(Deno.env.get("DB_PORT") || envConfig["DB_PORT"] || "5432");
+const DB_NAME = Deno.env.get("DB_NAME") || envConfig["DB_NAME"] ||
+  "your_database";
+const DB_PASSWORD = Deno.env.get("DB_PASSWORD") || envConfig["DB_PASSWORD"] ||
+  "your_password";
+const DB_PORT = parseInt(
+  Deno.env.get("DB_PORT") || envConfig["DB_PORT"] || "5432",
+);
 
+let healthCheckTimer: number | undefined;
 // 创建数据库连接池
 const pool = new Pool({
   user: DB_USER,
@@ -68,9 +74,42 @@ async function transaction<T>(
   }
 }
 
-// 定期检查数据库连接
-setInterval(() => {
-  checkDatabaseConnection().catch(console.error);
-}, 5000);
+// // 定期检查数据库连接
+// setInterval(() => {
+//   checkDatabaseConnection().catch(console.error);
+// }, 5000);
 
-export { checkDatabaseConnection, pool, query, transaction };
+// 新增函数：启动健康检查定时器
+function startHealthCheck() {
+  // 避免重复启动
+  if (healthCheckTimer === undefined) {
+    healthCheckTimer = setInterval(() => {
+      checkDatabaseConnection().catch(console.error);
+    }, 5000);
+    console.log("Database health check timer started.");
+  }
+}
+
+// 新增函数：停止健康检查定时器
+function stopHealthCheck() {
+  if (healthCheckTimer !== undefined) {
+    clearInterval(healthCheckTimer);
+    healthCheckTimer = undefined; // 重置 ID
+    console.log("Database health check timer stopped.");
+  }
+}
+
+// 新增函数：关闭连接池及清理资源
+async function closeDatabase() {
+  console.log("Closing database pool...");
+  stopHealthCheck()
+  await pool.end(); // 调用 pool.end() 来关闭所有连接，这是一个异步操作，需要 await
+  console.log("Database pool closed.");
+}
+if (Deno.env.get("DENO_ENV") !== "test") {
+  startHealthCheck();
+} else {
+  console.log("Running in test environment, skipping auto health check.");
+}
+
+export { startHealthCheck,stopHealthCheck,closeDatabase, pool, query, transaction };

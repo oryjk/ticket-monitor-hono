@@ -1,5 +1,7 @@
 import {Hono} from "hono";
 import {sendOrderNotificationEmail} from "../utils/email.ts";
+import {getUserInfo, getWeChatUserInfo} from "../user/user_service.ts";
+import {OrderQueryStatus} from "./order_service.ts";
 
 const order_handler = new Hono();
 
@@ -14,11 +16,16 @@ interface OrderInfo {
   // 如果还有其他字段，可以在这里添加
 }
 
-async function fetchMatchOrderList(
+export async function fetchMatchOrderList(
   lid2: string | number,
   authHeader: string,
-  page: number, // 根据 Python 代码中的请求体结构，这里的 page 是当前页码
-): Promise<OrderInfo[] | null> {
+  orderQueryStatus: number, // 根据 Python 代码中的请求体结构，这里的 page 是当前页码
+): Promise<OrderInfo[]> {
+  console.log(
+    `[Fetch] 正在请求匹配订单列表: ${lid2}，订单状态: ${
+      OrderQueryStatus[orderQueryStatus]
+    }`,
+  );
   // 构建请求 URL
   const matchOrderUrl =
     `https://fccdn1.k4n.cc/fc/wx_api/v1/MatchOrder/matchOrderList?lid2=${lid2}`;
@@ -46,12 +53,17 @@ async function fetchMatchOrderList(
 
   // 构建请求体数据
   const matchOrderData = {
-    page: { current: page, currentPage: 1, pageSize: 6, status: "loading" },
+    page: {
+      current: orderQueryStatus,
+      currentPage: 1,
+      pageSize: 6,
+      status: "loading",
+    },
   };
 
   try {
     console.log(
-      `[Fetch] 正在请求匹配订单列表: ${matchOrderUrl}，页码: ${page}`,
+      `[Fetch] 正在请求匹配订单列表: ${matchOrderUrl}，页码: ${orderQueryStatus}`,
     );
 
     // 使用 Deno 的 fetch API 发送 POST 请求
@@ -105,31 +117,47 @@ async function fetchMatchOrderList(
   } catch (error) {
     // 捕获网络错误或 fetch/json 解析错误
     console.error(`[Fetch] 请求匹配订单列表时发生错误: ${error}`);
-    return null; // 根据 Python 示例，发生错误时返回 null
+    return []; // 根据 Python 示例，发生错误时返回 null
   }
 }
 
-order_handler.post("/orderList", async (c) => {
-  const body = await c.req.json();
-  const { orderStatus, userId, token } = body;
-  try {
-    const orderList = await fetchMatchOrderList(userId, token, orderStatus);
-
-    if (orderList) {
-      return c.json(orderList); // Hono 默认返回 200 OK 状态码
-    } else {
-      return c.json({ msg: "订单列表为空。" }, 200); // 500 Internal Server Error
-    }
-  } catch (error) {
-    console.error("获取比赛列表出错:", error);
-    console.error("[API] 处理 /api/match-orders 请求时发生内部错误:", error);
-    return c.json({ error: "内部服务器错误处理请求。" }, 500); // 500 Internal Server Error
+order_handler.get("/orderList/:member_key/:status", async (c) => {
+  const member_key = c.req.param("member_key");
+  const status = c.req.param("status");
+  if (!member_key) {
+    return c.json({ msg: "输入参数不正确。" }, 200); // 500 Internal Server Error
   }
+
+  const member_into = await getUserInfo(member_key);
+  if (!member_into) {
+    return c.json({ msg: "会员信息无效。" }, 200); // 500 Internal Server Error
+  }
+
+  let weChatInfos = await getWeChatUserInfo(member_into.id);
+  if (!weChatInfos) {
+    return c.json({ msg: "会员没有绑定任何微信用户。" }, 200); // 500 Internal Server Error
+  }
+  const orderPromises: Array<Promise<OrderInfo[]>> = weChatInfos.map(
+    (weChatInfo) => {
+      const orderList = fetchMatchOrderList(
+        weChatInfo.uid,
+        weChatInfo.auth_token,
+        Number(status),
+      );
+      return orderList;
+    },
+  );
+
+  const arrayOfOrderArrays: Array<OrderInfo[]> = await Promise.all(
+    orderPromises,
+  );
+
+  return c.json(arrayOfOrderArrays); // Hono 默认返回 200 OK 状态码
 });
 
 order_handler.get("/sendEmail", async (c) => {
   try {
-    await sendOrderNotificationEmail("测试一下", "测试一下内容");
+    await sendOrderNotificationEmail("oryjk@qq.com", "测试一下内容","");
     return c.json({ message: "邮件发送成功" }, 200);
   } catch (error) {
     console.error("邮件发送失败:", error);
