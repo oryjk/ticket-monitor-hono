@@ -157,12 +157,44 @@ order_handler.get("/orderList/:member_key/:status", async (c) => {
 
 order_handler.get("/sendEmail", async (c) => {
   try {
-    await sendOrderNotificationEmail("oryjk@qq.com", "测试一下内容","");
+    await sendOrderNotificationEmail("oryjk@qq.com", "测试一下内容", "");
     return c.json({ message: "邮件发送成功" }, 200);
   } catch (error) {
     console.error("邮件发送失败:", error);
     return c.json({ message: "邮件发送失败" }, 500);
   }
 });
+
+order_handler.post("/createUserInfo", async (c) => {
+  try {
+    const userInfoReq: UserInfoReq = await c.req.json();
+    //todo 这里需要转发到抢票系统中
+    console.log(userInfoReq);
+    return c.json(userInfoReq, 200);
+  } catch (error) {
+    console.error("邮件发送失败:", error);
+    return c.json({ message: "邮件发送失败" }, 500);
+  }
+});
+
+order_handler.post("/bindUserMember", async (c) => {
+  try {
+    const userMember = await c.req.json();
+    //todo 这里需要转发到抢票系统中
+    console.log(userMember);
+    return c.json(userMember, 200);
+  } catch (error) {
+    console.error("邮件发送失败:", error);
+    return c.json({ message: "邮件发送失败" }, 500);
+  }
+});
+
+interface UserInfoReq {
+  token: string;
+  userId: string;
+  loginCode: string;
+  machineId: string;
+  licenseKey: string;
+}
 
 export default order_handler;

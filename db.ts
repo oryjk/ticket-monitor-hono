@@ -85,7 +85,7 @@ function startHealthCheck() {
   if (healthCheckTimer === undefined) {
     healthCheckTimer = setInterval(() => {
       checkDatabaseConnection().catch(console.error);
-    }, 5000);
+    }, 60000);
     console.log("Database health check timer started.");
   }
 }
