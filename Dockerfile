@@ -7,7 +7,7 @@ WORKDIR /app
 
 # 将编译后的可执行文件复制到容器的 /app 目录
 # 注意：这里是相对于 Docker 构建上下文的路径 (BUILD_DIR)
-COPY ticket-monitor-hono /app/
+COPY ./build/ticket-monitor-hono /app/
 
 # 使可执行文件可执行
 RUN chmod +x /app/ticket-monitor-hono
