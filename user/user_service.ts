@@ -92,38 +92,48 @@ export interface WeChatInfo {
   uid: number;
   auth_token: string;
   member_id: number;
+  realname: string;
+  create_at: Date;
+  update_at: Date;
 }
 export async function saveWeChatUser(
   uid: number,
   auth_token: string,
   member_id: number,
+  realname: string,
 ): Promise<WeChatInfo | null> {
   const sql = `
-    SELECT uid, auth_token, member_id
-    FROM rs_wechat_info
-    WHERE uid = $1
-      and member_id = $2
+      SELECT uid, auth_token, member_id, update_at
+      FROM rs_wechat_info
+      WHERE uid = $1
+        and member_id = $2
   `;
 
   const rows = await query<WeChatInfo>(sql, [uid, member_id]);
   if (rows.length != 0) {
-    console.log("已经绑定过了，无需重复绑定");
-    return null;
+    console.log(`已经绑定过了，准备更新用户 ${uid} ${realname}`);
   }
-  const insert_sql = `insert into rs_wechat_info(uid, auth_token, member_id)
-                 values ($1, $2, $3)
+  const insert_sql =
+    `insert into rs_wechat_info(uid, auth_token, member_id, realname, create_at, update_at)
+     values ($1, $2, $3, $4,  NOW()::TIMESTAMP(0), NOW()::TIMESTAMP(0)) ON CONFLICT (uid)
+      DO
+    UPDATE SET
+        auth_token = EXCLUDED.auth_token, -- 使用新提供的值更新 auth_token
+        realname = EXCLUDED.realname, -- 使用新提供的值更新 realname
+        member_id = EXCLUDED.member_id,
+        update_at = NOW()::TIMESTAMP(0)
     `;
-  await query(insert_sql, [uid, auth_token, member_id]);
+   await query<WeChatInfo>(insert_sql, [
+    uid,
+    auth_token,
+    member_id,
+    realname
+  ]);
 
-  const newUserInfo: WeChatInfo = {
-    uid: uid,
-    auth_token: auth_token,
-    member_id: member_id,
-    // 如果 WeChatInfo 接口包含 phone 字段，并且在插入时 phone 是 null 或默认值，可以在这里加上
-    // phone: null // 假设插入时 phone 是 null
-  };
 
-  return newUserInfo;
+  const newRows = await query<WeChatInfo>(sql, [uid, member_id]);
+  console.log(`保存用户 ${uid} ${realname} ${newRows[0].update_at}成功`);
+  return newRows[0];
 }
 
 export async function getWeChatUserInfo(

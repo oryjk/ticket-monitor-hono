@@ -31,6 +31,8 @@ async function checkDatabaseConnection(): Promise<boolean> {
   let client: PoolClient | undefined;
   try {
     client = await pool.connect();
+    await client.queryObject("SET TIMEZONE TO 'Asia/Shanghai';");
+
     const result = await client.queryObject`SELECT 1 as check`;
     console.log("Database connection is healthy");
     return true;
@@ -47,6 +49,7 @@ async function checkDatabaseConnection(): Promise<boolean> {
 // 封装执行查询的函数
 async function query<T>(text: string, params: any[] = []): Promise<T[]> {
   const client = await pool.connect();
+  await client.queryObject("SET TIMEZONE TO 'Asia/Shanghai';");
   try {
     // 使用 Deno Postgres 的查询方式
     const result = await client.queryObject<T>(text, params);
@@ -102,7 +105,7 @@ function stopHealthCheck() {
 // 新增函数：关闭连接池及清理资源
 async function closeDatabase() {
   console.log("Closing database pool...");
-  stopHealthCheck()
+  stopHealthCheck();
   await pool.end(); // 调用 pool.end() 来关闭所有连接，这是一个异步操作，需要 await
   console.log("Database pool closed.");
 }
@@ -112,4 +115,11 @@ if (Deno.env.get("DENO_ENV") !== "test") {
   console.log("Running in test environment, skipping auto health check.");
 }
 
-export { startHealthCheck,stopHealthCheck,closeDatabase, pool, query, transaction };
+export {
+  closeDatabase,
+  pool,
+  query,
+  startHealthCheck,
+  stopHealthCheck,
+  transaction,
+};

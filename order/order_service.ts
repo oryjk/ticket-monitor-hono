@@ -1,8 +1,13 @@
-import {getUserInfoById, getWeChatUserInfo, updateUserInfo, WeChatInfo,} from "../user/user_service.ts";
-import {query} from "../db.ts";
-import {fetchMatchOrderList} from "./order_handler.ts";
-import {sendOrderNotificationEmail} from "../utils/email.ts";
-import {fetchMatchOrderInfo} from "./order_detail_service.ts";
+import {
+  getUserInfoById,
+  getWeChatUserInfo,
+  updateUserInfo,
+  WeChatInfo,
+} from "../user/user_service.ts";
+import { query } from "../db.ts";
+import { fetchMatchOrderList } from "./order_handler.ts";
+import { sendOrderNotificationEmail } from "../utils/email.ts";
+import { fetchMatchOrderInfo } from "./order_detail_service.ts";
 
 /**
  * 订单状态枚举
@@ -59,8 +64,10 @@ async function getEligibleUsersForBackgroundCheck(): Promise<
   > = [];
 
   try {
-    const members = await query<{ id: number; email: string | null }>(
-      "SELECT id, email FROM rs_member_info WHERE email IS NOT NULL and member_status='ACTIVE' and email_count>0", // 仅获取有邮箱的会员
+    const members = await query<
+      { id: number; email: string; email_count: number; member_name: string }
+    >(
+      "SELECT id, email ,email_count , member_name FROM rs_member_info WHERE email IS NOT NULL and member_status='ACTIVE' and email_count>0", // 仅获取有邮箱的会员
       // 或者 "SELECT id, email FROM rs_member_info WHERE background_check_enabled = TRUE"
     );
 
@@ -68,8 +75,11 @@ async function getEligibleUsersForBackgroundCheck(): Promise<
       console.log("没有找到符合要求的会员");
       return [];
     }
-
-    console.log(`找到 ${members.length} 个符合发送邮件提醒要求的会员.`);
+    members.forEach((member) => {
+      console.log(
+        `会员 ${member.id} ${member.member_name} 邮箱地址 ${member.email} 剩余次数 ${member.email_count}`,
+      );
+    });
 
     // 2. 为每个会员获取绑定的微信信息 (rs_wechat_info)
     for (const member of members) {

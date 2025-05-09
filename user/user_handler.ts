@@ -23,9 +23,14 @@ user_handler.post("/bind", async (c) => {
 
 user_handler.post("/info", async (c) => {
   const body = await c.req.json();
-  const { uid, auth_token, member_id } = body;
+  const { uid, auth_token, member_id, realname } = body;
   try {
-    const weChatInfo = await saveWeChatUser(uid, auth_token, member_id);
+    const weChatInfo = await saveWeChatUser(
+      uid,
+      auth_token,
+      member_id,
+      realname,
+    );
 
     if (weChatInfo) {
       return c.json(weChatInfo); // Hono 默认返回 200 OK 状态码
