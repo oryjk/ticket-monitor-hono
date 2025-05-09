@@ -34,6 +34,7 @@ DENO_COMPILE_BASE_CMD = [
     "deno", "compile",
     "--allow-net",
     "--allow-env",
+    "--allow-sys",
     "--allow-read",  # 保持 --allow-read，如果你的应用需要读取文件（例如证书、配置文件等）
     "--target", "x86_64-unknown-linux-gnu"
     # 如果你的应用还需要写文件、执行子进程等权限，请添加 --allow-write, --allow-run 等
