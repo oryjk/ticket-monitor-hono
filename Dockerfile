@@ -10,7 +10,8 @@ WORKDIR /app
 COPY ticket-monitor-hono /app/
 
 # 使可执行文件可执行
-RUN chmod +x /app/ticket-monitor-hono
+RUN chmod +x /app/ticket-monitor-hono \
+ ls -l /app/
 
 # 如果你的 Deno 应用在容器内监听了端口，可以使用 EXPOSE 指令（可选，仅为文档目的）
 # Dockerfile 中的 EXPOSE 并不会实际发布端口，只是声明
