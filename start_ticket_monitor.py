@@ -8,10 +8,10 @@ import sys
 
 # --- 配置变量 ---
 GIT_REPO_URL = "git@github.com:oryjk/ticket-monitor-hono.git"  # <<< 替换为你的 Git 仓库地址 <<<
-LOCAL_REPO_PATH = "/home/ubuntu/ticket-monitor-hono"  # 本地存放代码的目录
+LOCAL_REPO_PATH = "/home/ubuntu/projects/ticket-monitor-hono"  # 本地存放代码的目录
 APP_ENTRY_POINT = "main.ts"  # 你的 Deno 入口文件
 COMPILED_EXECUTABLE_NAME = "ticket-monitor-hono"  # 编译后的可执行文件名称
-BUILD_DIR = "./."  # 用于存放编译结果和 Dockerfile 的目录
+BUILD_DIR = "/home/ubuntu/projects/ticket-monitor-hono"  # 用于存放编译结果和 Dockerfile 的目录
 DOCKERFILE_NAME = "Dockerfile"  # Dockerfile 的文件名
 DOCKER_IMAGE_NAME = "ticket-monitor-hono"  # Docker 镜像名称
 DOCKER_CONTAINER_NAME = "ticket-monitor-hono"  # Docker 容器名称
