@@ -1,6 +1,6 @@
 import {Hono} from "hono";
 import {query} from "../db.ts";
-import {match_info_json, match_list_json} from "./match_default_data.ts";
+import {match_info_json, match_list_json, region_json,} from "./match_default_data.ts";
 
 interface MemberBinding {
   id: number;
@@ -181,15 +181,45 @@ match.get("/default/matchList", async (c) => {
 match.get("/default/matchInfo", async (c) => {
   try {
     const lid2 = c.req.query("lid2") ?? "空";
-    return new Response(match_info_json(lid2), {
-      headers: {
-        "Content-Type": "application/json",
+    let currentMatch = await getCurrentMatch();
+    let match = currentMatch ?? {
+      match_id: "无法获取到当前比赛信息",
+    };
+    console.log("返回matchInfo的数据");
+    return new Response(
+      match_info_json(lid2, match.match_id),
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
       },
-    });
+    );
   } catch (error) {
     console.error("获取缺省比赛详情错误:", error);
     return c.json({
       message: "获取缺省比赛详情错误",
+      error: Deno.env.get("ENVIRONMENT") === "development"
+        ? (error instanceof Error ? error.message : String(error))
+        : undefined,
+    }, 500);
+  }
+});
+
+// 获取当前比赛座位信息
+match.get("/default/region", async (c) => {
+  try {
+    return new Response(
+      region_json,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  } catch (error) {
+    console.error("获取比赛列表出错:", error);
+    return c.json({
+      message: "服务器内部错误",
       error: Deno.env.get("ENVIRONMENT") === "development"
         ? (error instanceof Error ? error.message : String(error))
         : undefined,
