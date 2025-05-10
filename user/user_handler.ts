@@ -1,13 +1,19 @@
-import {Hono} from "hono";
-import {bindUser, getUserInfo, saveWeChatUser} from "./user_service.ts";
+import { Hono } from "hono";
+import { bindUser, getUserInfo, saveWeChatUser } from "./user_service.ts";
 
 const user_handler = new Hono();
 
 user_handler.post("/bind", async (c) => {
   const body = await c.req.json();
-  const { member_key, phone, email, member_name } = body;
+  const { member_key, phone, email, member_name, machineId } = body;
   try {
-    const memberInfo = await bindUser(member_key, phone, email, member_name);
+    const memberInfo = await bindUser(
+      member_key,
+      machineId,
+      phone,
+      email,
+      member_name,
+    );
 
     if (memberInfo) {
       return c.json(memberInfo); // Hono 默认返回 200 OK 状态码
@@ -54,6 +60,7 @@ user_handler.get("/info/:member_key", async (c) => {
   if (!member_into) {
     return c.json({ msg: "会员信息无效。" }, 200); // 500 Internal Server Error
   }
+
   try {
     return c.json(member_into); // Hono 默认返回 200 OK 状态码
   } catch (error) {

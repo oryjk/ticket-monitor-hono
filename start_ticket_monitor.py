@@ -24,7 +24,7 @@ DOCKER_PORTS = ["8000:8000"]
 ENV_VARS = {
     "DB_USER": "admin",  # <<< 替换为你的数据库用户名 <<<
     "DB_PASSWORD": "beifa888",  # <<< 替换为你的数据库密码 <<<
-    "DB_HOST": "127.0.0.1",  # <<< 替换为你的数据库主机 <<<
+    "DB_HOST": "49.234.55.170",  # <<< 替换为你的数据库主机 <<<
     "DB_NAME": "ticket_cd",  # <<< 替换为你的数据库名 <<<
     "DB_PORT": "5432",  # <<< 替换为你的数据库端口 <<<
 }
@@ -148,15 +148,14 @@ def compile_deno():
     # 创建 Dockerfile
     dockerfile_content = f"""
 # 使用一个轻量级的 Linux 发行版作为基础镜像
-# alpine 是一个不错的选择，非常小巧
-FROM alpine:latest
+FROM ubuntu:latest
 
 # 设置工作目录
 WORKDIR /app
 
 # 将编译后的可执行文件复制到容器的 /app 目录
 # 注意：这里是相对于 Docker 构建上下文的路径
-COPY {COMPILED_EXECUTABLE_NAME} /app/
+COPY ./{COMPILED_EXECUTABLE_NAME} /app/
 
 # 使可执行文件可执行
 RUN chmod +x /app/{COMPILED_EXECUTABLE_NAME}

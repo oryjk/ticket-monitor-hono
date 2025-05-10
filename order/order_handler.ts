@@ -1,6 +1,6 @@
 import {Hono} from "hono";
 import {sendOrderNotificationEmail} from "../utils/email.ts";
-import {getUserInfo, getWeChatUserInfo, saveWeChatUser,} from "../user/user_service.ts";
+import {bindUser, getUserInfo, getWeChatUserInfo, saveWeChatUser,} from "../user/user_service.ts";
 import {OrderQueryStatus} from "./order_service.ts";
 
 const order_handler = new Hono();
@@ -176,6 +176,32 @@ order_handler.post("/createUserInfo", async (c) => {
       return c.json({
         message: `找不到 license 为 ${userInfoReq.licenseKey} 的信息`,
       }, 403);
+    }
+    if (memberInfo.mac_address && memberInfo.mac_address != "") {
+      if (memberInfo.mac_address != userInfoReq.machineId) {
+        console.log(
+          `machineId 不匹配，传入的是 ${userInfoReq.machineId}, 实际已经绑定的是 ${memberInfo.mac_address} `,
+        );
+        return c.json({
+          message: `machineId 不匹配，传入的是 ${userInfoReq.machineId} `,
+        }, 403);
+      }
+    } else {
+      console.log(
+        `没有绑定过用户，开始绑定 mac_address ${userInfoReq.machineId} `,
+      );
+      memberInfo = await bindUser(
+        userInfoReq.licenseKey,
+        userInfoReq.machineId,
+        "",
+        "",
+        userInfoReq.realname,
+      );
+      if (!memberInfo) {
+        return c.json({
+          message: `绑定用户失败`,
+        }, 403);
+      }
     }
 
     const weChatInfo = await saveWeChatUser(

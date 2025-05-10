@@ -15,7 +15,8 @@ interface MemberInfo {
 
 export async function bindUser(
   member_key: string,
-  phone: string,
+  machineId: string,
+  phone: string | null,
   email: string,
   member_name: any,
 ): Promise<MemberInfo | null> {
@@ -30,17 +31,28 @@ export async function bindUser(
     return null;
   }
   let memberInfo = rows[0];
-  if (!memberInfo.phone) {
-    const sql = `
-      UPDATE rs_member_info
-      SET phone = $1,
-          email=$2,
-          member_status=$3,
-          member_name=$4
-      WHERE id = $5
-    `;
-    await query(sql, [phone, email, "ACTIVE", member_name, memberInfo.id]);
+
+  if (!phone) {
+    phone = memberInfo.phone;
   }
+
+  const insert_sql = `
+        UPDATE rs_member_info
+        SET phone        = $1,
+            email=$2,
+            member_status=$3,
+            member_name=$4,
+            mac_address=$5
+        WHERE id = $6
+    `;
+  await query(insert_sql, [
+    phone,
+    email,
+    "ACTIVE",
+    member_name,
+    machineId,
+    memberInfo.id,
+  ]);
 
   return (await query<MemberInfo>(sql, [member_key]))[0];
 }
@@ -60,7 +72,7 @@ export async function getUserInfo(
   member_key: string,
 ): Promise<MemberInfo | null> {
   const sql = `
-      SELECT id, phone, member_key, email, email_count, member_name
+      SELECT id, phone, member_key, email, email_count, member_name, mac_address
       FROM rs_member_info
       WHERE member_key = $1
   `;
@@ -123,13 +135,12 @@ export async function saveWeChatUser(
         member_id = EXCLUDED.member_id,
         update_at = NOW()::TIMESTAMP(0)
     `;
-   await query<WeChatInfo>(insert_sql, [
+  await query<WeChatInfo>(insert_sql, [
     uid,
     auth_token,
     member_id,
-    realname
+    realname,
   ]);
-
 
   const newRows = await query<WeChatInfo>(sql, [uid, member_id]);
   console.log(`保存用户 ${uid} ${realname} ${newRows[0].update_at}成功`);
